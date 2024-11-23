@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import Swal from "sweetalert2";
 import upload_area from "../assets/upload_area.svg";
 import { MdAdd } from "react-icons/md";
 
@@ -47,7 +48,47 @@ const AddProduct = ({ productToEdit, onProductUpdated }) => {
     setProductDetails({ ...productDetails, [e.target.name]: e.target.value });
   };
 
+  const validateInputs = () => {
+    const { name, old_price, new_price, stock, category } = productDetails;
+
+    // Validar nombre del producto
+    if (!name || name.length < 1 || name.length > 40) {
+      Swal.fire("Error", "El nombre del producto debe tener entre 1 y 40 caracteres.", "error");
+      return false;
+    }
+
+    // Validar precio original
+    if (!old_price || isNaN(old_price) || old_price <= 0) {
+      Swal.fire("Error", "El precio debe ser un número mayor a 0.", "error");
+      return false;
+    }
+
+    // Validar precio de oferta
+    if (!new_price || isNaN(new_price) || new_price <= 0) {
+      Swal.fire("Error", "El precio de oferta debe ser un número mayor a 0.", "error");
+      return false;
+    }
+
+    // Validar stock
+    if (!stock || isNaN(stock) || stock < 0) {
+      Swal.fire("Error", "El stock debe ser un número igual o mayor a 0.", "error");
+      return false;
+    }
+
+    // Validar categoría
+    if (!["women", "men", "kid"].includes(category)) {
+      Swal.fire("Error", "La categoría debe ser 'Women', 'Men' o 'Kid'.", "error");
+      return false;
+    }
+
+    return true;
+  };
+
   const handleSaveProduct = async () => {
+    if (!validateInputs()) {
+      return; // Detiene la ejecución si hay errores de validación
+    }
+
     let responseData;
     let formData = new FormData();
 
@@ -63,7 +104,7 @@ const AddProduct = ({ productToEdit, onProductUpdated }) => {
       if (responseData.success) {
         productDetails.image = responseData.image_url;
       } else {
-        alert("Error al cargar la imagen");
+        Swal.fire("Error", "Error al cargar la imagen.", "error");
         return;
       }
     }
@@ -83,14 +124,14 @@ const AddProduct = ({ productToEdit, onProductUpdated }) => {
       const data = await response.json();
 
       if (data.success) {
-        alert(`Producto ${isEditing ? "actualizado" : "añadido"} correctamente`);
+        Swal.fire("Éxito", `Producto ${isEditing ? "actualizado" : "añadido"} correctamente.`, "success");
         onProductUpdated();
         resetForm();
       } else {
-        alert(`Error al ${isEditing ? "actualizar" : "añadir"} el producto: ${data.message}`);
+        Swal.fire("Error", `Error al ${isEditing ? "actualizar" : "añadir"} el producto: ${data.message}`, "error");
       }
     } catch (error) {
-      alert(`Error en el servidor: ${error.message}`);
+      Swal.fire("Error", `Error en el servidor: ${error.message}`, "error");
     }
   };
 
