@@ -1,5 +1,6 @@
 import React, { useContext, useState } from 'react';
 import { CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
+import Swal from 'sweetalert2';
 import { ShopContext } from '../Context/ShopContext';
 
 export default function PaymentInterface({ totalAmount, cartProducts }) {
@@ -10,10 +11,10 @@ export default function PaymentInterface({ totalAmount, cartProducts }) {
   const [email, setEmail] = useState('');
   const [address, setAddress] = useState('');
   const [pdfBlob, setPdfBlob] = useState(null); // Estado para almacenar el PDF
-  const { setCartItems, getDefaultCart,clearCartInDatabase } = useContext(ShopContext);
+  const { setCartItems, getDefaultCart, clearCartInDatabase } = useContext(ShopContext);
   const stripe = useStripe();
   const elements = useElements();
-  
+
   const clearCartAfterPurchase = () => {
     setCartItems(getDefaultCart()); // Vacía el carrito en el contexto
   };
@@ -38,42 +39,84 @@ export default function PaymentInterface({ totalAmount, cartProducts }) {
   const handleSubmit = async (event) => {
     event.preventDefault();
 
+    // Validar los campos antes de continuar
+    if (!validateFields()) return;
+
     if (!stripe || !elements) return;
 
     let currentClientSecret = clientSecret || await handleCreatePaymentIntent();
 
     const result = await stripe.confirmCardPayment(currentClientSecret, {
-        payment_method: {
-            card: elements.getElement(CardElement),
-            billing_details: { name, email, address: { line1: address } },
-        },
+      payment_method: {
+        card: elements.getElement(CardElement),
+        billing_details: { name, email, address: { line1: address } },
+      },
     });
 
     if (result.error) {
-        setPaymentStatus(`Error: ${result.error.message}`);
+      setPaymentStatus(`Error: ${result.error.message}`);
+      Swal.fire({
+        icon: 'error',
+        title: 'Error en el pago',
+        text: `Error: ${result.error.message}`,
+      });
     } else if (result.paymentIntent.status === 'succeeded') {
-        setPaymentStatus('¡Pago realizado con éxito!');
-        setShowDownloadButton(true);
+      setPaymentStatus('¡Pago realizado con éxito!');
+      setShowDownloadButton(true);
 
-        // Confirmar compra en el backend para actualizar stock
-        const response = await fetch('http://localhost:4000/confirm-purchase', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ items: cartProducts }),
-        });
+      // Confirmar compra en el backend para actualizar stock
+      const response = await fetch('http://localhost:4000/confirm-purchase', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items: cartProducts }),
+      });
 
-        const purchaseConfirmation = await response.json();
-        if (purchaseConfirmation.success) {
-            clearCartAfterPurchase(); // Vaciar el carrito tras la compra exitosa
-            await clearCartInDatabase();
-            await fetchAndStorePDF(); // Llamar a la función para obtener y almacenar el PDF
-        } else {
-            console.error('Error al actualizar el stock:', purchaseConfirmation.message);
-        }
+      const purchaseConfirmation = await response.json();
+      if (purchaseConfirmation.success) {
+        clearCartAfterPurchase(); // Vaciar el carrito tras la compra exitosa
+        await clearCartInDatabase();
+        await fetchAndStorePDF(); // Llamar a la función para obtener y almacenar el PDF
+      } else {
+        console.error('Error al actualizar el stock:', purchaseConfirmation.message);
+      }
     }
   };
 
-  // Función para obtener y almacenar el PDF en pdfBlob
+  const validateFields = () => {
+    // Validación del nombre del titular
+    if (!name || name.length < 1 || name.length > 40) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Error en el nombre',
+        text: 'El nombre del titular debe tener entre 1 y 40 caracteres.',
+      });
+      return false;
+    }
+
+    // Validación del correo electrónico
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!email || !emailRegex.test(email)) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Error en el correo',
+        text: 'Debe proporcionar un correo válido en el formato ejemplo@correo.com.',
+      });
+      return false;
+    }
+
+    // Validación de la dirección
+    if (!address || address.length < 1 || address.length > 40) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Error en la dirección',
+        text: 'La dirección debe tener entre 1 y 40 caracteres.',
+      });
+      return false;
+    }
+
+    return true;
+  };
+
   const fetchAndStorePDF = async () => {
     try {
       const response = await fetch('http://localhost:4000/download-invoice', {
@@ -94,7 +137,6 @@ export default function PaymentInterface({ totalAmount, cartProducts }) {
     }
   };
 
-  // Función para descargar el PDF desde pdfBlob
   const downloadInvoice = () => {
     if (!pdfBlob) return;
 
@@ -123,7 +165,7 @@ export default function PaymentInterface({ totalAmount, cartProducts }) {
 
         <div className="md:w-1/2 bg-white shadow-lg rounded-lg p-6">
           <h3 className="text-lg font-semibold mb-4">Pago con tarjeta</h3>
-          
+
           <form onSubmit={handleSubmit}>
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700">Nombre del titular</label>
