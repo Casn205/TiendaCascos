@@ -140,6 +140,7 @@ const AddProduct = ({ productToEdit, onProductUpdated }) => {
       <div className="mb-3">
         <h4 className="bold-18 pb-2">Product title:</h4>
         <input
+          aria-label="Product Title"
           value={productDetails.name}
           onChange={changeHandler}
           type="text"
@@ -151,6 +152,7 @@ const AddProduct = ({ productToEdit, onProductUpdated }) => {
       <div className="mb-3">
         <h4 className="bold-18 pb-2">Price:</h4>
         <input
+          aria-label="Original Price"
           value={productDetails.old_price}
           onChange={changeHandler}
           type="text"
@@ -162,6 +164,7 @@ const AddProduct = ({ productToEdit, onProductUpdated }) => {
       <div className="mb-3">
         <h4 className="bold-18 pb-2">Offer Price:</h4>
         <input
+          aria-label="Offer Price"
           value={productDetails.new_price}
           onChange={changeHandler}
           type="text"
@@ -173,6 +176,7 @@ const AddProduct = ({ productToEdit, onProductUpdated }) => {
       <div className="mb-3">
         <h4 className="bold-18 pb-2">Stock:</h4>
         <input
+          aria-label="Stock Quantity"
           value={productDetails.stock}
           onChange={changeHandler}
           type="number"
@@ -197,6 +201,7 @@ const AddProduct = ({ productToEdit, onProductUpdated }) => {
       <div>
         <label htmlFor="file-input">
           <img
+            aria-label="Upload Image"
             src={image ? URL.createObjectURL(image) : productDetails.image || upload_area}
             alt="Product"
             className="w-20 rounded-sm inline-block"
